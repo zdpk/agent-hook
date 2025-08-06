@@ -1,10 +1,27 @@
-# GitHub Integration Hooks 설정 가이드
+# Agent Hook 설정 가이드
 
-이 문서는 Claude Code와 GitHub Projects/Issues를 연동하기 위한 Hook 설정 방법을 안내합니다.
+이 문서는 Claude CLI 기반 index.md 자동 관리 Hook 설정 방법을 안내합니다.
 
 ## 1. 사전 준비
 
-### GitHub Personal Access Token 생성
+### Claude CLI 설치 및 설정
+
+1. **Claude CLI 설치**
+   ```bash
+   # 설치 방법은 Claude Code 공식 문서 참조
+   # https://docs.anthropic.com/en/docs/claude-code/quickstart
+   ```
+
+2. **Claude Pro 구독 필요**
+   - Claude CLI 사용을 위해 Claude Pro 구독($20/월) 필요
+   - API 토큰 비용 없이 구독으로 무제한 사용 가능
+
+3. **Claude CLI 로그인**
+   ```bash
+   claude auth login
+   ```
+
+### GitHub Personal Access Token 생성 (선택사항)
 
 1. GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
 2. "Generate new token (classic)" 클릭
@@ -26,10 +43,19 @@ brew install jq  # macOS
 
 ## 2. 환경 설정
 
-### 2.1 환경 변수 설정
+### 2.1 환경 설정
 
 ```bash
-# .env 파일 생성
+# Claude CLI가 정상 작동하는지 확인
+claude --version
+
+# 테스트 프롬프트 실행
+claude -p "안녕하세요, 간단히 인사해주세요."
+```
+
+**추가 환경 변수 (GitHub 연동 시에만 필요)**:
+```bash
+# .env 파일 생성 (GitHub Hook 사용 시)
 cp hooks/templates/.env.example .env
 
 # .env 파일 편집
@@ -37,10 +63,9 @@ vim .env
 ```
 
 `.env` 파일에 다음 내용 입력:
-
 ```bash
 GITHUB_TOKEN=your_personal_access_token_here
-GITHUB_OWNER=your_github_username
+GITHUB_OWNER=your_github_username  
 GITHUB_REPO=your_repository_name
 GITHUB_PROJECT_NUMBER=1
 ```

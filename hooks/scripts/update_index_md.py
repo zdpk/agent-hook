@@ -1,22 +1,32 @@
 import os
 import sys
 import subprocess
-import anthropic
 import shutil
 import json
 from datetime import datetime
 
 # --- 설정 ---
-MODEL_NAME = "claude-3-sonnet-20240307"
 BACKUP_DIR = ".index_backups"
 MAX_RETRIES = 3
 PROTECTED_DIRS = [".git", "node_modules", "__pycache__", ".index_backups"]
+CLAUDE_CLI_TIMEOUT = 30  # Claude CLI 호출 타임아웃 (초)
 # --- 설정 끝 ---
 
-try:
-    client = anthropic.Anthropic()
-except Exception as e:
-    print(f"오류: Anthropic API 클라이언트 초기화 실패. ANTHROPIC_API_KEY 환경 변수를 확인하세요. 에러: {e}", file=sys.stderr)
+def check_claude_cli():
+    """Claude CLI가 설치되어 있는지 확인합니다."""
+    try:
+        result = subprocess.run(['claude', '--version'], capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            print(f"Claude CLI 감지: {result.stdout.strip()}")
+            return True
+    except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.CalledProcessError):
+        pass
+    
+    print("오류: Claude CLI를 찾을 수 없습니다.", file=sys.stderr)
+    print("Claude CLI 설치: https://docs.anthropic.com/en/docs/claude-code", file=sys.stderr)
+    return False
+
+if not check_claude_cli():
     sys.exit(1)
 
 def create_backup(file_path):
@@ -101,7 +111,7 @@ def get_changed_files_with_status():
         return []
 
 def summarize_file_with_claude(file_path):
-    """Claude를 사용하여 파일 내용을 한 줄로 요약합니다. (재시도 로직 포함)"""
+    """Claude CLI를 사용하여 파일 내용을 한 줄로 요약합니다. (재시도 로직 포함)"""
     if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
         return "파일이 비어 있거나 존재하지 않습니다."
     
@@ -109,23 +119,42 @@ def summarize_file_with_claude(file_path):
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
-            prompt = f"""
-            다음 파일 내용의 핵심 역할을 한국어로 한 문장으로 요약해줘.
-            파일의 전체적인 목적과 기능에 초점을 맞춰서 설명해줘.
-            결과는 다른 부연 설명 없이, 오직 요약된 한 문장만 출력해줘.
+            
+            # 파일 내용이 너무 길면 앞부분만 사용 (Claude CLI 입력 제한 고려)
+            if len(content) > 8000:  # 대략 8KB 제한
+                content = content[:8000] + "\n... (파일이 길어서 앞부분만 표시)"
+            
+            prompt = f"""다음 파일 내용의 핵심 역할을 한국어로 한 문장으로 요약해줘.
+파일의 전체적인 목적과 기능에 초점을 맞춰서 설명해줘.
+결과는 다른 부연 설명 없이, 오직 요약된 한 문장만 출력해줘.
 
-            파일 경로: {file_path}
-            --- 파일 내용 ---
-            {content}
-            """
-            message = client.messages.create(
-                model=MODEL_NAME, max_tokens=100, messages=[{"role": "user", "content": prompt}]
-            )
-            return message.content[0].text.strip()
+파일 경로: {file_path}
+--- 파일 내용 ---
+{content}"""
+            
+            # Claude CLI 호출
+            result = subprocess.run([
+                'claude', '-p', prompt
+            ], capture_output=True, text=True, timeout=CLAUDE_CLI_TIMEOUT)
+            
+            if result.returncode == 0 and result.stdout.strip():
+                summary = result.stdout.strip()
+                # 여러 줄인 경우 첫 번째 줄만 사용
+                if '\n' in summary:
+                    summary = summary.split('\n')[0]
+                return summary
+            else:
+                raise subprocess.CalledProcessError(result.returncode, 'claude')
+                
+        except subprocess.TimeoutExpired:
+            print(f"'{file_path}' 파일 요약 중 타임아웃 (시도 {attempt + 1}/{MAX_RETRIES})", file=sys.stderr)
+        except subprocess.CalledProcessError as e:
+            print(f"'{file_path}' 파일 요약 중 Claude CLI 오류 (시도 {attempt + 1}/{MAX_RETRIES}): {e}", file=sys.stderr)
         except Exception as e:
             print(f"'{file_path}' 파일 요약 중 오류 발생 (시도 {attempt + 1}/{MAX_RETRIES}): {e}", file=sys.stderr)
-            if attempt == MAX_RETRIES - 1:
-                return "요약 생성 중 오류 발생"
+        
+        if attempt == MAX_RETRIES - 1:
+            return "요약 생성 중 오류 발생"
 
 def update_index_md(directory, file_name, summary):
     """백업 및 검증과 함께 index.md 파일을 안전하게 업데이트합니다."""
@@ -249,7 +278,7 @@ def check_index_md_modifications():
         return False
 
 def main():
-    print("--- index.md 업데이트 Hook 시작 (v3: 향상된 안전성) ---")
+    print("--- index.md 업데이트 Hook 시작 (v4: Claude CLI 통합) ---")
     
     # index.md 직접 수정 검사
     if check_index_md_modifications():
