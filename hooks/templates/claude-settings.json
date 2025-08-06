@@ -1,0 +1,21 @@
+{
+  "hooks": [
+    {
+      "event": "user-prompt-submit",
+      "commands": [
+        "./hooks/scripts/plan-to-issue.sh"
+      ],
+      "description": "Plan을 GitHub Issue로 자동 생성"
+    },
+    {
+      "event": "post-tool-use",
+      "matcher": {
+        "tool_name": "TodoWrite"
+      },
+      "commands": [
+        "./hooks/scripts/todo-to-project.sh"
+      ],
+      "description": "Todo 상태 변경을 GitHub Project에 반영"
+    }
+  ]
+}

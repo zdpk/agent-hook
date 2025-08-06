@@ -1,0 +1,32 @@
+{
+  "github": {
+    "token": "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN",
+    "owner": "YOUR_GITHUB_USERNAME",
+    "repo": "YOUR_REPOSITORY_NAME",
+    "project_number": 1,
+    "default_labels": ["claude-plan", "automated"],
+    "api_base_url": "https://api.github.com"
+  },
+  "hooks": {
+    "plan_to_issue": {
+      "enabled": true,
+      "trigger_keywords": ["plan", "계획", "todo", "task"],
+      "issue_template": "plan_issue.md",
+      "auto_assign": true,
+      "add_to_project": true
+    },
+    "todo_to_project": {
+      "enabled": true,
+      "status_mapping": {
+        "pending": "Todo",
+        "in_progress": "In Progress", 
+        "completed": "Done"
+      },
+      "auto_close_issue": true
+    }
+  },
+  "logging": {
+    "level": "info",
+    "file": "hooks/logs/github-hooks.log"
+  }
+}
