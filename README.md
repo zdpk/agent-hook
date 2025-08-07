@@ -15,7 +15,7 @@ Claude Code용 고급 Hook 시스템으로, Git 커밋 시 파일 변경사항�
 
 **작동 방식:**
 ```
-Git 커밋 → 변경 파일 감지 → Claude API로 요약 → index.md 업데이트 → 검증 → 백업 생성
+Git 커밋 → 변경 파일 감지 → Claude CLI로 요약 → index.md 업데이트 → 검증 → 백업 생성
 ```
 
 ### 🔒 안전성 보장
@@ -26,9 +26,12 @@ Git 커밋 → 변경 파일 감지 → Claude API로 요약 → index.md 업데
 
 ## 설치 및 사용
 
-### 1. 환경 설정
+### 1. Claude CLI 설치
 ```bash
-export ANTHROPIC_API_KEY="your_api_key_here"
+# Claude Code CLI 설치 (필수)
+# https://docs.anthropic.com/en/docs/claude-code/quickstart
+
+# Claude Pro 구독 필요 (Claude CLI 사용을 위함)
 ```
 
 ### 2. Git Hook 설정
@@ -78,16 +81,17 @@ test_hook.py                 # Hook 검증 스크립트
 - 디렉토리명을 제목으로 사용하여 일관성 유지
 
 ### ✅ 3. 파일 추가/제거 동기화
-- **추가/수정**: Claude API로 파일 요약 후 index.md 업데이트
+- **추가/수정**: Claude CLI로 파일 요약 후 index.md 업데이트  
 - **삭제**: index.md에서 해당 파일 항목 제거
 - **이름변경**: 삭제+추가로 분리하여 올바르게 처리
 
-### ✅ 4. 검증 및 커밋 중단 (새로 추가)
+### ✅ 4. 검증 및 커밋 중단 
 - **백업 시스템**: 수정 전 `.index_backups/` 디렉토리에 자동 백업
 - **구조 검증**: 필수 섹션(제목, "## 주요 파일") 확인
-- **에러 처리**: API 최대 3회 재시도, 실패 시 롤백
+- **에러 처리**: Claude CLI 최대 3회 재시도, 실패 시 롤백
 - **커밋 중단**: 작업 실패 시 `sys.exit(1)`로 커밋 차단
 - **보호 기능**: 시스템 디렉토리(.git, node_modules 등) 자동 제외
+- **구독 활용**: Claude Pro 구독으로 무제한 사용 가능
 
 ## 라이선스
 
